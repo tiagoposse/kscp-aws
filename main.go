@@ -23,7 +23,7 @@ func main() {
 
 	// Validate flags
 	if *configData == "" {
-		log.Fatal("You must specify a secret name using --secret-name")
+		log.Fatal("You must specify a config using --config")
 	}
 
 	data, err := base64.StdEncoding.DecodeString(*configData)
@@ -31,7 +31,7 @@ func main() {
 		log.Fatal("error:", err)
 	}
 
-	var secrets map[string]map[string]string
+	var secrets []map[string]string
 	err = json.Unmarshal(data, &secrets)
 	if err != nil {
 		log.Fatal("Failed to parse secret", err)
@@ -45,20 +45,20 @@ func main() {
 	// Create a Secrets Manager client
 	client := secretsmanager.NewFromConfig(cfg)
 
-	for secretName, secretCfg := range secrets {
+	for _, secret := range secrets {
 		// Retrieve the secret value
-		secretValue, err := getSecretValue(client, secretName)
+		secretValue, err := getSecretValue(client, secret["name"])
 		if err != nil {
 			log.Fatalf("failed to retrieve secret, %v", err)
 		}
 
 		// Write the secret value to the specified file
-		err = os.WriteFile(secretCfg["target"], []byte(fmt.Sprintf(secretCfg["template"], secretValue)), 0644)
+		err = os.WriteFile(secret["target"], []byte(fmt.Sprintf(secret["template"], secretValue)), 0644)
 		if err != nil {
 			log.Fatalf("failed to write secret to file, %v", err)
 		}
 
-		fmt.Printf("Secret value saved to %s\n", secretCfg["target"])
+		fmt.Printf("Secret value saved to %s\n", secret["target"])
 	}
 }
 
